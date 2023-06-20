@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<!--    Name: Martins Babajide Email:bmartins@healthsteward.ca
+        Project Topic: A web application for Merging CSV files
+        Project Description: The web application allows users to select multiple csv files and merge them together
+        Users have the ability to select unlimited numbers of files and the application also gives user a preview
+        and also an option to download the merged CSV file.-->
+<html>
+<head>
+    <style>
+        /* CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+         /* set positioning and color for table header and cell */
+        th, td {
+            padding: 8px;
+            border: 1px solid #000000;
+            text-align: left;
+            border-bottom: 1px solid #000000;
+        }
+        /* set color and font weight for table header */
+        th {
+            background-color: #ffffff;
+            font-weight: bold;
+        }
+         /* set color and positioning for button */
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <!-- HTML PART OF THE PAGE-->
+
+    <!-- Shows the title of the page-->
+    <h2>Merge CSV Files</h2>
+    <!-- allowa user to select multiple files using this input-->
+    <input type="file" id="fileInput" multiple>
+    <!-- allowa user to click a button which will merge the selected CSV files.--> 
+    <button id="mergeButton" class="btn">Merge CSV</button>
+    <!-- adisplays the merged data and also a download link-->
+    <div id="output"></div>
+
+    <script>
+        //JavaScript (JS)
+
+       //When the web page is loaded, the JS runs 
+       document.addEventListener('DOMContentLoaded', function () {
+    //find the file input element on the page
+    const fileInput = document.getElementById('fileInput');
+    //find the mergebutton and store it
+    const mergeButton = document.getElementById('mergeButton');
+    //merge button runs the mergeCSV function when it is clicked
+    mergeButton.addEventListener('click', mergeCSV);
+
+    //fucntion is called when the user clicks the merge button
+    function mergeCSV() {
+        //retrieves selected files from the file input
+        const files = fileInput.files;
+        //dispalys the merged data
+        const outputDiv = document.getElementById('output');
+        //empty list is created to store the merged data.
+        const mergedData = [];
+
+        // Check if files were selected, if there were no files selected, display message
+        if (files.length === 0) {
+            outputDiv.innerHTML = '<p>No files selected.</p>';
+            return;
+        }
+        //process each selected file
+        const filePromises = Array.from(files).map(file => {
+            //for each file, a promise is created to read its contents
+            return new Promise((resolve, reject) => {
+                //a reader is created to read the file.
+                const reader = new FileReader();
+                //when the file is loaded, we resolve the promise with its contents.
+                reader.onload = () => resolve(reader.result);
+                //if there's an error with reading the file, we reject the promise.
+                reader.onerror = reject;
+                //the file is read as text
+                reader.readAsText(file);
+            });
+        });
+        //if promises are resolved(all files are read successfully) then we get the contents of each file
+        Promise.all(filePromises)
+            .then(results => {
+                //go through each file's content
+                results.forEach((result, index) => {
+                    const lines = result.split('\n');
+
+                    // Process each line of the CSV file
+                    lines.forEach((line, lineIndex) => {
+                        const trimmedLine = line.trim();
+
+                        // Skip empty lines
+                        if (trimmedLine === '') {
+                            return;
+                        }
+
+                        const columns = trimmedLine.split(',');
+
+                        // If it's the first file, include the headers
+                        if (index === 0 && lineIndex === 0) {
+                            mergedData.push(['File Name', ...columns]);
+                        }
+                        // Skip the headers for subsequent files
+                        else if (index > 0 && lineIndex === 0) {
+                            return;
+                        }
+
+                        mergedData.push([files[index].name, ...columns]);
+                    });
+                });
+
+                // Create a table to display the merged data
+                const table = document.createElement('table');
+                mergedData.forEach((row, rowIndex) => {
+                    const tableRow = document.createElement('tr');
+                    row.forEach((cellData, cellIndex) => {
+                        const tableCell = document.createElement(rowIndex === 0 ? 'th' : 'td');
+                        tableCell.textContent = cellData;
+                        tableRow.appendChild(tableCell);
+                    });
+                    table.appendChild(tableRow);
+                });
+
+                // Display the merged table in the output div
+                outputDiv.innerHTML = '';
+                outputDiv.appendChild(table);
+
+                // Add a download link for the merged CSV file
+                const mergedCSV = mergedData.map(row => row.join(',')).join('\n');
+                const blob = new Blob([mergedCSV], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = 'merged.csv';
+                downloadLink.textContent = 'Download Merged CSV';
+                outputDiv.appendChild(downloadLink);
+            })
+            //if there's an error reading the files, an error message pops up
+            .catch(error => {
+                outputDiv.innerHTML = '<p>Error reading file(s).</p>';
+                console.error(error);
+            });
+    }
+});
+
+    </script>
+</body>
+</html>
